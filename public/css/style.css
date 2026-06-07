@@ -1,0 +1,560 @@
+/* === Reset === */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #0a0a0a;
+  color: #e5e7eb;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* === Dashboard Grid === */
+.dashboard {
+  display: grid;
+  grid-template-rows: 72px 1fr 1fr 1fr;
+  height: 100vh;
+  width: 100vw;
+  gap: 10px;
+  padding: 10px;
+}
+
+/* === Row Layouts === */
+.row {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+}
+
+.row-status {
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+}
+
+.row-infra {
+  grid-template-columns: 1fr;
+}
+
+.infra-grid {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: 16px;
+  height: 100%;
+}
+
+.infra-divider {
+  background: #1f2937;
+}
+
+.row-finance {
+  grid-template-columns: 1fr 1fr;
+}
+
+.row-info {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* === Widget Card === */
+.widget {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 12px 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.widget-header {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6b7280;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.widget-body {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 1rem;
+}
+
+/* === Clock === */
+.widget-clock {
+  background: transparent;
+  border: none;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.clock-time {
+  font-size: 2.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #f9fafb;
+  line-height: 1;
+}
+
+.clock-date {
+  font-size: 0.95rem;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+/* === Weather === */
+.widget-weather {
+  background: transparent;
+  border: none;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.weather-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.weather-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weather-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.weather-temp {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #f9fafb;
+  line-height: 1;
+}
+
+.weather-details {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  gap: 1px;
+  text-align: right;
+}
+
+/* === Network === */
+.widget-network {
+  background: transparent;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* === Chaos Index === */
+.widget-chaos {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+}
+
+.chaos-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chaos-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #6b7280;
+}
+
+.chaos-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.network-dots {
+  display: flex;
+  gap: 14px;
+}
+
+.net-host {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.net-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* === Status Colors === */
+.status-up   { color: #10b981; }
+.status-down { color: #ef4444; }
+.status-warn { color: #f59e0b; }
+.status-info { color: #3b82f6; }
+
+.bg-up   { background: #10b981; }
+.bg-down { background: #ef4444; }
+.bg-warn { background: #f59e0b; }
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.status-dot.status-up   { background: #10b981; }
+.status-dot.status-down { background: #ef4444; }
+.status-dot.status-warn { background: #f59e0b; }
+
+/* === Infrastructure Section Titles === */
+.infra-section-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #1f2937;
+}
+
+/* === TrueNAS === */
+.truenas-section {
+  margin-bottom: 10px;
+}
+
+.truenas-section:last-child {
+  margin-bottom: 0;
+}
+
+.truenas-section h4 {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.truenas-pool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.95rem;
+}
+
+.pool-name {
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.sys-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.95rem;
+  color: #9ca3af;
+}
+
+.alert-item {
+  padding: 4px 8px;
+  margin: 3px 0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  border-left: 3px solid;
+}
+
+.alert-item.status-down {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.alert-item.status-warn {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.alert-item.status-info {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* === Services === */
+.service-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #1f2937;
+  font-size: 0.95rem;
+}
+
+.service-item:last-child {
+  border-bottom: none;
+}
+
+.service-name {
+  color: #e5e7eb;
+  font-weight: 500;
+}
+
+.service-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+/* === Finance / Rates === */
+.rate-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  height: 100%;
+}
+
+.rate-card {
+  padding: 10px 12px;
+  background: #1f2937;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.rate-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rate-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #f9fafb;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rate-date {
+  font-size: 0.75rem;
+  color: #4b5563;
+  margin-top: 2px;
+}
+
+/* === Stocks === */
+.stock-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #1f2937;
+}
+
+.stock-item:last-child {
+  border-bottom: none;
+}
+
+.stock-name {
+  font-weight: 600;
+  color: #e5e7eb;
+  font-size: 1rem;
+}
+
+.stock-symbol {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.stock-price {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f9fafb;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-change {
+  font-size: 0.9rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-change.positive { color: #10b981; }
+.stock-change.negative { color: #ef4444; }
+
+/* === Deliveries === */
+.delivery-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #1f2937;
+}
+
+.delivery-item:last-child {
+  border-bottom: none;
+}
+
+.delivery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.delivery-carrier {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.delivery-status {
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #1f2937;
+}
+
+.delivery-tracking {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+  margin-top: 3px;
+}
+
+.delivery-detail {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+/* === News === */
+.news-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #1f2937;
+}
+
+.news-item:last-child {
+  border-bottom: none;
+}
+
+.news-title {
+  font-size: 0.95rem;
+  color: #e5e7eb;
+  line-height: 1.3;
+}
+
+.news-source {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* === Calendar === */
+.cal-event {
+  padding: 8px 0;
+  border-bottom: 1px solid #1f2937;
+  display: flex;
+  gap: 12px;
+}
+
+.cal-event:last-child {
+  border-bottom: none;
+}
+
+.cal-date {
+  min-width: 48px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.cal-month {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.cal-day {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #3b82f6;
+  line-height: 1.1;
+}
+
+.cal-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.cal-summary {
+  font-size: 0.95rem;
+  color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-time {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.cal-location {
+  font-size: 0.8rem;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* === Utility === */
+.text-muted {
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+/* === Scrollbar === */
+.widget-body::-webkit-scrollbar {
+  width: 3px;
+}
+
+.widget-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.widget-body::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 2px;
+}

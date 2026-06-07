@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="dashboard">
+
+    <!-- Row 1: Status Bar -->
+    <div class="row row-status">
+      <div class="widget widget-clock">
+        <div id="clock-time" class="clock-time">--:--:-- --</div>
+        <div id="clock-date" class="clock-date">Loading...</div>
+      </div>
+      <div class="widget widget-chaos" id="chaos-widget">
+        <div id="chaos-content" class="chaos-display"></div>
+      </div>
+      <div class="widget widget-network" id="network-widget">
+        <div id="network-content" class="network-dots"></div>
+      </div>
+      <div class="widget widget-weather">
+        <div id="weather-content" class="weather-content">
+          <span class="text-muted">Loading...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Services -->
+    <div class="row row-infra">
+      <div class="widget">
+        <div class="widget-header">Services</div>
+        <div class="widget-body infra-grid">
+          <div id="services-content"><span class="text-muted">Loading...</span></div>
+          <div class="infra-divider"></div>
+          <div id="truenas-content"><span class="text-muted">Loading...</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Finance -->
+    <div class="row row-finance">
+      <div class="widget">
+        <div class="widget-header">Rates</div>
+        <div id="finance-content" class="widget-body">
+          <span class="text-muted">Loading...</span>
+        </div>
+      </div>
+      <div class="widget" id="stocks-widget">
+        <div class="widget-header">Market</div>
+        <div id="stocks-content" class="widget-body">
+          <span class="text-muted">Loading...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: Info -->
+    <div class="row row-info">
+      <div class="widget" id="deliveries-widget">
+        <div class="widget-header">Deliveries</div>
+        <div id="deliveries-content" class="widget-body">
+          <span class="text-muted">Loading...</span>
+        </div>
+      </div>
+      <div class="widget" id="news-widget">
+        <div class="widget-header">Headlines <span class="text-muted" style="text-transform:none;letter-spacing:0">via Kagi News</span></div>
+        <div id="news-content" class="widget-body">
+          <span class="text-muted">Loading...</span>
+        </div>
+      </div>
+      <div class="widget" id="calendar-widget">
+        <div class="widget-header">Calendar</div>
+        <div id="calendar-content" class="widget-body">
+          <span class="text-muted">Loading...</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

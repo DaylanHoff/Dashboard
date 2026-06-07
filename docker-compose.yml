@@ -1,0 +1,12 @@
+services:
+  dashboard:
+    build: .
+    container_name: kiosk-dashboard
+    restart: unless-stopped
+    ports:
+      - "1337:1337"
+    env_file:
+      - .env
+    # Use host network if you need direct LAN access for pings/service checks
+    # Uncomment the line below and remove the 'ports' section to use host networking
+    # network_mode: host

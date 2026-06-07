@@ -1,0 +1,22 @@
+services:
+  dashboard:
+    image: ghcr.io/daylanhoff/dashboard:latest
+    container_name: kiosk-dashboard
+    restart: unless-stopped
+    ports:
+      - "1337:1337"
+    env_file:
+      - .env
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower-dashboard
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_STOPPED=false
+    # Only watch the dashboard container
+    command: kiosk-dashboard
