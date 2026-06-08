@@ -9,8 +9,16 @@ const pkg = require('./package.json');
 const app = express();
 const PORT = process.env.PORT || 1337;
 
-// Serve static frontend
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static frontend (no-cache headers to ensure updates are picked up)
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  },
+}));
 
 // ---------------------------------------------------------------------------
 // Config — sends non-sensitive settings to the frontend
