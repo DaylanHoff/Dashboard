@@ -4,6 +4,8 @@ const { exec } = require('child_process');
 const ical = require('node-ical');
 require('dotenv').config();
 
+const pkg = require('./package.json');
+
 const app = express();
 const PORT = process.env.PORT || 1337;
 
@@ -15,6 +17,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ---------------------------------------------------------------------------
 app.get('/api/config', (_req, res) => {
   res.json({
+    version: pkg.version,
     refresh: {
       weather: (parseInt(process.env.REFRESH_WEATHER) || 600) * 1000,
       truenas: (parseInt(process.env.REFRESH_TRUENAS) || 30) * 1000,
@@ -352,7 +355,9 @@ app.get('/api/calendar', async (_req, res) => {
     if (!url || !user || !pass)
       return res.json({ error: 'Nextcloud not configured' });
 
-    const calUrl = `${url}/remote.php/dav/calendars/${user}/${cal}/`;
+    // Strip any path (e.g. /login) to get the base URL
+    const baseUrl = new URL(url).origin;
+    const calUrl = `${baseUrl}/remote.php/dav/calendars/${user}/${cal}/`;
     const now = new Date();
     const future = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
@@ -380,6 +385,13 @@ app.get('/api/calendar', async (_req, res) => {
       },
       body,
     });
+
+    if (resp.status === 401) {
+      return res.json({ error: 'Nextcloud auth failed — use an app password, not your account password' });
+    }
+    if (!resp.ok) {
+      return res.json({ error: `Nextcloud returned HTTP ${resp.status}` });
+    }
 
     const text = await resp.text();
 

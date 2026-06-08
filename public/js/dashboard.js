@@ -38,12 +38,15 @@ function timeAgo(dateStr) {
 
 function updateClock() {
   const now = new Date();
+  const tz = 'America/Denver';
   $('clock-time').textContent = now.toLocaleTimeString('en-US', {
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+    timeZone: tz,
   });
   $('clock-date').textContent = now.toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  });
+    timeZone: tz,
+  }) + ' MST';
 }
 
 // ── Weather ────────────────────────────────────────────────────────────────
@@ -146,14 +149,14 @@ async function updateServices() {
     el.innerHTML = '<h4 class="infra-section-title">Monitors</h4><span class="text-muted">No services configured</span>';
     return;
   }
-  el.innerHTML = '<h4 class="infra-section-title">Monitors</h4>' + data.map(s => `
+  el.innerHTML = '<h4 class="infra-section-title">Monitors</h4><div class="services-grid">' + data.map(s => `
     <div class="service-item">
       <span class="service-name">${s.name}</span>
       <div class="service-status">
         <span class="status-dot ${s.status === 'up' ? 'status-up' : 'status-down'}"></span>
         <span class="${s.status === 'up' ? 'status-up' : 'status-down'}">${s.status.toUpperCase()}</span>
       </div>
-    </div>`).join('');
+    </div>`).join('') + '</div>';
 }
 
 // ── Finance ────────────────────────────────────────────────────────────────
@@ -351,7 +354,8 @@ async function updateNetwork() {
     <div class="net-host">
       <div class="net-dot ${h.status === 'up' ? 'bg-up' : 'bg-down'}"></div>
       <span>${h.name}${h.latency !== null ? ` ${h.latency}ms` : ''}</span>
-    </div>`).join('');
+    </div>`).join('') +
+    (config.version ? `<div class="net-version">v${config.version}</div>` : '');
 }
 
 // ── Initialization ─────────────────────────────────────────────────────────
