@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const { exec } = require('child_process');
 const ical = require('node-ical');
+const WebSocket = require('ws');
 require('dotenv').config();
 
 const pkg = require('./package.json');
@@ -96,17 +97,78 @@ app.get('/api/weather', async (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// TrueNAS — API proxy
+// TrueNAS — JSON-RPC 2.0 over WebSocket (replaces deprecated REST API)
 // ---------------------------------------------------------------------------
-async function truenasFetch(endpoint) {
+let truenasWs = null;
+let truenasReady = false;
+let rpcId = 1;
+const rpcCallbacks = new Map();
+
+function truenasConnect() {
   const host = process.env.TRUENAS_HOST;
   const key = process.env.TRUENAS_API_KEY;
-  const proto = process.env.TRUENAS_PROTOCOL || 'http';
-  const resp = await fetch(`${proto}://${host}/api/v2.0/${endpoint}`, {
-    headers: { Authorization: `Bearer ${key}` },
+  const wsProto = process.env.TRUENAS_PROTOCOL === 'https' ? 'wss' : 'ws';
+  if (!host || !key) return;
+
+  truenasWs = new WebSocket(`${wsProto}://${host}/api/current`, {
+    rejectUnauthorized: false,
   });
-  return resp.json();
+
+  truenasWs.on('open', () => {
+    // Authenticate with API key
+    const authId = rpcId++;
+    truenasWs.send(JSON.stringify({
+      jsonrpc: '2.0', method: 'auth.login_with_api_key',
+      params: [key], id: authId,
+    }));
+    rpcCallbacks.set(authId, (result) => {
+      truenasReady = result === true;
+      if (truenasReady) console.log('TrueNAS WebSocket connected');
+      else console.error('TrueNAS auth failed');
+    });
+  });
+
+  truenasWs.on('message', (raw) => {
+    try {
+      const msg = JSON.parse(raw);
+      if (msg.id != null && rpcCallbacks.has(msg.id)) {
+        rpcCallbacks.get(msg.id)(msg.result, msg.error);
+        rpcCallbacks.delete(msg.id);
+      }
+    } catch { /* ignore non-JSON frames */ }
+  });
+
+  truenasWs.on('close', () => {
+    truenasReady = false;
+    setTimeout(truenasConnect, 5000); // reconnect after 5s
+  });
+
+  truenasWs.on('error', () => {
+    truenasReady = false;
+  });
 }
+
+function rpcCall(method, params = []) {
+  return new Promise((resolve, reject) => {
+    if (!truenasReady || !truenasWs || truenasWs.readyState !== WebSocket.OPEN) {
+      return reject(new Error('TrueNAS WebSocket not connected'));
+    }
+    const id = rpcId++;
+    const timeout = setTimeout(() => {
+      rpcCallbacks.delete(id);
+      reject(new Error('RPC timeout'));
+    }, 10000);
+    rpcCallbacks.set(id, (result, error) => {
+      clearTimeout(timeout);
+      if (error) reject(new Error(error.message || JSON.stringify(error)));
+      else resolve(result);
+    });
+    truenasWs.send(JSON.stringify({ jsonrpc: '2.0', method, params, id }));
+  });
+}
+
+// Start WebSocket connection on boot
+truenasConnect();
 
 app.get('/api/truenas', async (_req, res) => {
   try {
@@ -115,9 +177,9 @@ app.get('/api/truenas', async (_req, res) => {
     if (!host || !key) return res.json({ error: 'TrueNAS not configured' });
 
     const [pools, systemInfo, alerts] = await Promise.all([
-      truenasFetch('pool'),
-      truenasFetch('system/info'),
-      truenasFetch('alert/list'),
+      rpcCall('pool.query'),
+      rpcCall('system.info'),
+      rpcCall('alert.list'),
     ]);
 
     res.json({ pools, systemInfo, alerts });
