@@ -25,6 +25,14 @@ function formatBytes(bytes) {
   return `${bytes.toFixed(1)} ${units[i]}`;
 }
 
+function formatSpeed(bps) {
+  if (!bps || bps === 0) return '0 B/s';
+  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+  let i = 0;
+  while (bps >= 1024 && i < units.length - 1) { bps /= 1024; i++; }
+  return `${bps.toFixed(1)} ${units[i]}`;
+}
+
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -81,6 +89,47 @@ async function updateWeather() {
       <span>H: ${data.high}° L: ${data.low}°</span>
       <span>Humidity: ${data.humidity}%</span>
     </div>`;
+}
+
+// ── qBittorrent ────────────────────────────────────────────────────────────
+
+async function updateQBit() {
+  const data = await fetchJSON('/api/qbit');
+  const el = $('qbit-content');
+  if (data.error) {
+    el.innerHTML = `<span class="text-muted">${data.error}</span>`;
+    return;
+  }
+
+  const dlSpeed = formatSpeed(data.dlSpeed);
+  const ulSpeed = formatSpeed(data.ulSpeed);
+
+  let html = `<div class="qbit-summary">
+    <span class="qbit-count">${data.count} active</span>
+    <span class="qbit-speeds">↓ ${dlSpeed} &nbsp; ↑ ${ulSpeed}</span>
+  </div>`;
+
+  if (data.torrents && data.torrents.length) {
+    html += '<div class="torrent-list">';
+    for (const t of data.torrents) {
+      const pct = Math.round((t.progress || 0) * 100);
+      const speed = t.dlSpeed > 0 ? formatSpeed(t.dlSpeed) : '';
+      const name = t.name.length > 45 ? t.name.slice(0, 44) + '…' : t.name;
+      html += `<div class="torrent-item">
+        <div class="torrent-name" title="${t.name}">${name}</div>
+        <div class="torrent-bar-row">
+          <div class="torrent-bar"><div class="torrent-fill" style="width:${pct}%"></div></div>
+          <span class="torrent-pct">${pct}%</span>
+          ${speed ? `<span class="torrent-speed">${speed}</span>` : ''}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  } else {
+    html += '<div class="text-muted" style="margin-top:8px">No active downloads</div>';
+  }
+
+  el.innerHTML = html;
 }
 
 // ── TrueNAS ────────────────────────────────────────────────────────────────
@@ -349,6 +398,7 @@ async function init() {
 
   // Initial fetch for all widgets
   updateWeather();
+  updateQBit();
   updateTrueNAS();
   updateFinance();
   updateStocks();
@@ -361,6 +411,7 @@ async function init() {
   // Refresh intervals
   const r = config.refresh || {};
   setInterval(updateWeather,  r.weather  || 600000);
+  setInterval(updateQBit,     r.qbit     || 10000);
   setInterval(updateTrueNAS,  r.truenas  || 30000);
   setInterval(updateFinance,  r.finance  || 300000);
   setInterval(updateStocks,   r.finance  || 300000);

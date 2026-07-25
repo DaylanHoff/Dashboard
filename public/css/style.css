@@ -42,10 +42,6 @@ html, body {
   grid-template-columns: 1fr 1fr;
 }
 
-.widget-placeholder {
-  background: transparent;
-  border: 1px dashed #1f2937;
-}
 
 .row-finance {
   grid-template-columns: 1fr 1fr;
@@ -239,6 +235,86 @@ html, body {
 .status-dot.status-up   { background: #10b981; }
 .status-dot.status-down { background: #ef4444; }
 .status-dot.status-warn { background: #f59e0b; }
+
+/* === qBittorrent / Downloads === */
+.qbit-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.qbit-count {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f9fafb;
+}
+
+.qbit-speeds {
+  font-size: 0.85rem;
+  color: #10b981;
+  font-variant-numeric: tabular-nums;
+}
+
+.torrent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.torrent-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.torrent-name {
+  font-size: 0.85rem;
+  color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.torrent-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.torrent-bar {
+  flex: 1;
+  height: 4px;
+  background: #1f2937;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.torrent-fill {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.torrent-pct {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+  text-align: right;
+}
+
+.torrent-speed {
+  font-size: 0.75rem;
+  color: #10b981;
+  font-variant-numeric: tabular-nums;
+  min-width: 60px;
+  text-align: right;
+}
 
 /* === Infrastructure Section Titles === */
 .infra-section-title {

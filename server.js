@@ -31,6 +31,7 @@ app.get('/api/config', (_req, res) => {
       truenas: (parseInt(process.env.REFRESH_TRUENAS) || 30) * 1000,
       finance: (parseInt(process.env.REFRESH_FINANCE) || 300) * 1000,
       crypto: (parseInt(process.env.REFRESH_CRYPTO) || 300) * 1000,
+      qbit:   (parseInt(process.env.REFRESH_QBIT)   || 10)  * 1000,
       news: (parseInt(process.env.REFRESH_NEWS) || 1800) * 1000,
       calendar: (parseInt(process.env.REFRESH_CALENDAR) || 300) * 1000,
       network: (parseInt(process.env.REFRESH_NETWORK) || 60) * 1000,
@@ -299,6 +300,41 @@ app.get('/api/deliveries', async (_req, res) => {
     );
 
     res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// qBittorrent — API proxy
+// ---------------------------------------------------------------------------
+app.get('/api/qbit', async (_req, res) => {
+  try {
+    const host = process.env.QBIT_HOST;
+    const key  = process.env.QBIT_API_KEY;
+    if (!host || !key) return res.json({ error: 'qBittorrent not configured' });
+
+    const headers = { Authorization: `Bearer ${key}` };
+
+    const [transferResp, torrentsResp] = await Promise.all([
+      fetch(`${host}/api/v2/transfer/info`, { headers }),
+      fetch(`${host}/api/v2/torrents/info?filter=downloading`, { headers }),
+    ]);
+
+    const transfer = await transferResp.json();
+    const torrents = await torrentsResp.json();
+
+    res.json({
+      dlSpeed: transfer.dl_info_speed || 0,
+      ulSpeed: transfer.up_info_speed || 0,
+      count:   Array.isArray(torrents) ? torrents.length : 0,
+      torrents: (Array.isArray(torrents) ? torrents : []).slice(0, 8).map((t) => ({
+        name:    t.name,
+        progress: t.progress,
+        dlSpeed: t.dlspeed,
+        state:   t.state,
+      })),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
