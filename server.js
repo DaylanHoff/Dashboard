@@ -30,7 +30,7 @@ app.get('/api/config', (_req, res) => {
       weather: (parseInt(process.env.REFRESH_WEATHER) || 600) * 1000,
       truenas: (parseInt(process.env.REFRESH_TRUENAS) || 30) * 1000,
       finance: (parseInt(process.env.REFRESH_FINANCE) || 300) * 1000,
-      deliveries: (parseInt(process.env.REFRESH_DELIVERIES) || 900) * 1000,
+      crypto: (parseInt(process.env.REFRESH_CRYPTO) || 300) * 1000,
       news: (parseInt(process.env.REFRESH_NEWS) || 1800) * 1000,
       calendar: (parseInt(process.env.REFRESH_CALENDAR) || 300) * 1000,
       network: (parseInt(process.env.REFRESH_NETWORK) || 60) * 1000,
@@ -41,7 +41,6 @@ app.get('/api/config', (_req, res) => {
       news: process.env.ENABLE_NEWS !== 'false',
       calendar: process.env.ENABLE_CALENDAR !== 'false',
       network: process.env.ENABLE_NETWORK !== 'false',
-      deliveries: process.env.ENABLE_DELIVERIES !== 'false',
     },
   });
 });
@@ -120,7 +119,20 @@ app.get('/api/truenas', async (_req, res) => {
       truenasFetch('alert/list'),
     ]);
 
-    res.json({ pools, systemInfo, alerts });
+    // Apps (TrueNAS SCALE only — gracefully ignore if unavailable)
+    let appsDown = [];
+    try {
+      const apps = await truenasFetch('app');
+      if (Array.isArray(apps)) {
+        appsDown = apps
+          .filter((a) => a.state !== 'RUNNING')
+          .map((a) => ({ name: a.name, state: a.state || 'STOPPED' }));
+      }
+    } catch {
+      // TrueNAS CORE or endpoint unavailable — skip
+    }
+
+    res.json({ pools, systemInfo, alerts, appsDown });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -288,6 +300,35 @@ app.get('/api/deliveries', async (_req, res) => {
     );
 
     res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Crypto — CoinGecko (no API key needed)
+// ---------------------------------------------------------------------------
+app.get('/api/crypto', async (_req, res) => {
+  try {
+    const coins = (process.env.CRYPTO_COINS || 'bitcoin,ethereum,solana').split(',').map((c) => c.trim());
+    const symbols = { bitcoin: 'BTC', ethereum: 'ETH', solana: 'SOL', cardano: 'ADA', dogecoin: 'DOGE', ripple: 'XRP' };
+    const names   = { bitcoin: 'Bitcoin', ethereum: 'Ethereum', solana: 'Solana', cardano: 'Cardano', dogecoin: 'Dogecoin', ripple: 'XRP' };
+
+    const resp = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${coins.join(',')}&vs_currencies=usd&include_24hr_change=true`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    const data = await resp.json();
+
+    const result = coins.map((id) => ({
+      id,
+      name: names[id] || id,
+      symbol: symbols[id] || id.toUpperCase(),
+      price: data[id]?.usd ?? null,
+      change: data[id]?.usd_24h_change ?? null,
+    }));
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

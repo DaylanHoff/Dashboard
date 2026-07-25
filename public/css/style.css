@@ -39,18 +39,12 @@ html, body {
 }
 
 .row-infra {
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
 }
 
-.infra-grid {
-  display: grid;
-  grid-template-columns: 1fr 1px 1fr;
-  gap: 16px;
-  height: 100%;
-}
-
-.infra-divider {
-  background: #1f2937;
+.widget-placeholder {
+  background: transparent;
+  border: 1px dashed #1f2937;
 }
 
 .row-finance {
@@ -319,38 +313,6 @@ html, body {
   background: rgba(59, 130, 246, 0.08);
 }
 
-/* === Services === */
-.services-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 16px;
-}
-
-.service-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 0;
-  border-bottom: 1px solid #1f2937;
-  font-size: 0.95rem;
-}
-
-.service-item:last-child {
-  border-bottom: none;
-}
-
-.service-name {
-  color: #e5e7eb;
-  font-weight: 500;
-}
-
-.service-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.9rem;
-}
-
 /* === Finance / Rates === */
 .rate-grid {
   display: grid;
@@ -428,50 +390,6 @@ html, body {
 
 .stock-change.positive { color: #10b981; }
 .stock-change.negative { color: #ef4444; }
-
-/* === Deliveries === */
-.delivery-item {
-  padding: 8px 0;
-  border-bottom: 1px solid #1f2937;
-}
-
-.delivery-item:last-child {
-  border-bottom: none;
-}
-
-.delivery-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.delivery-carrier {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.delivery-status {
-  font-size: 0.85rem;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: #1f2937;
-}
-
-.delivery-tracking {
-  font-size: 0.8rem;
-  color: #6b7280;
-  font-family: 'Courier New', monospace;
-  margin-top: 3px;
-}
-
-.delivery-detail {
-  font-size: 0.85rem;
-  color: #9ca3af;
-  margin-top: 2px;
-}
 
 /* === News === */
 .news-item {

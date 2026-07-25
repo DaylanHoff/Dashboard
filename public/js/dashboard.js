@@ -89,15 +89,15 @@ async function updateTrueNAS() {
   const data = await fetchJSON('/api/truenas');
   const el = $('truenas-content');
   if (data.error) {
-    el.innerHTML = `<h4 class="infra-section-title">TrueNAS</h4><span class="text-muted">${data.error}</span>`;
+    el.innerHTML = `<span class="text-muted">${data.error}</span>`;
     return;
   }
 
-  let html = '<h4 class="infra-section-title">TrueNAS</h4>';
+  let html = '';
 
   // Pools
   if (data.pools && data.pools.length) {
-    html += '<div class="truenas-section"><h4>Storage Pools</h4>';
+    html += '<div class="truenas-section"><h4>Storage</h4>';
     for (const pool of data.pools) {
       const status = pool.status || (pool.healthy ? 'ONLINE' : 'DEGRADED');
       const cls = status === 'ONLINE' ? 'status-up' : 'status-down';
@@ -133,30 +133,22 @@ async function updateTrueNAS() {
     html += '<div class="truenas-section"><h4>Alerts</h4><span class="text-muted">No active alerts</span></div>';
   }
 
+  // Apps Down
+  if (data.appsDown && data.appsDown.length) {
+    html += '<div class="truenas-section"><h4>Apps Down</h4>';
+    for (const app of data.appsDown) {
+      html += `<div class="truenas-pool">
+        <span class="status-dot status-down"></span>
+        <span class="pool-name">${app.name}</span>
+        <span class="status-down" style="margin-left:auto">${app.state}</span>
+      </div>`;
+    }
+    html += '</div>';
+  } else if (Array.isArray(data.appsDown)) {
+    html += '<div class="truenas-section"><h4>Apps</h4><span class="status-up">All running</span></div>';
+  }
+
   el.innerHTML = html;
-}
-
-// ── Services ───────────────────────────────────────────────────────────────
-
-async function updateServices() {
-  const data = await fetchJSON('/api/services');
-  const el = $('services-content');
-  if (data.error) {
-    el.innerHTML = `<h4 class="infra-section-title">Monitors</h4><span class="text-muted">${data.error}</span>`;
-    return;
-  }
-  if (!data.length) {
-    el.innerHTML = '<h4 class="infra-section-title">Monitors</h4><span class="text-muted">No services configured</span>';
-    return;
-  }
-  el.innerHTML = '<h4 class="infra-section-title">Monitors</h4><div class="services-grid">' + data.map(s => `
-    <div class="service-item">
-      <span class="service-name">${s.name}</span>
-      <div class="service-status">
-        <span class="status-dot ${s.status === 'up' ? 'status-up' : 'status-down'}"></span>
-        <span class="${s.status === 'up' ? 'status-up' : 'status-down'}">${s.status.toUpperCase()}</span>
-      </div>
-    </div>`).join('') + '</div>';
 }
 
 // ── Finance ────────────────────────────────────────────────────────────────
@@ -216,38 +208,31 @@ async function updateStocks() {
   }).join('');
 }
 
-// ── Deliveries ─────────────────────────────────────────────────────────────
+// ── Crypto ─────────────────────────────────────────────────────────────────
 
-async function updateDeliveries() {
-  if (config.enabled?.deliveries === false) {
-    const w = $('deliveries-widget');
-    if (w) w.style.display = 'none';
-    return;
-  }
-
-  const data = await fetchJSON('/api/deliveries');
-  const el = $('deliveries-content');
+async function updateCrypto() {
+  const data = await fetchJSON('/api/crypto');
+  const el = $('crypto-content');
   if (data.error) {
     el.innerHTML = `<span class="text-muted">${data.error}</span>`;
     return;
   }
-  if (!data.length) {
-    el.innerHTML = '<span class="text-muted">No active deliveries</span>';
-    return;
-  }
 
-  el.innerHTML = data.map(d => {
-    const sc = d.status === 'Delivered' ? 'status-up' :
-               d.status === 'Error'     ? 'status-down' : 'status-warn';
-    return `<div class="delivery-item">
-      <div class="delivery-header">
-        <span class="delivery-carrier">${d.carrier}</span>
-        <span class="delivery-status ${sc}">${d.status}</span>
-      </div>
-      <div class="delivery-tracking">${d.number}</div>
-      ${d.eta ? `<div class="delivery-detail">ETA: ${d.eta}</div>` : ''}
-      ${d.lastUpdate ? `<div class="delivery-detail">${d.lastUpdate}</div>` : ''}
-    </div>`;
+  el.innerHTML = data.map(c => {
+    const change = c.change ?? 0;
+    const cls = change >= 0 ? 'positive' : 'negative';
+    const arrow = change >= 0 ? '▲' : '▼';
+    const price = c.price == null ? 'N/A'
+      : c.price >= 1000
+        ? '$' + c.price.toLocaleString('en-US', { maximumFractionDigits: 0 })
+        : '$' + c.price.toFixed(2);
+    return `<div class="stock-item">
+      <div><div class="stock-name">${c.name}</div>
+           <div class="stock-symbol">${c.symbol}</div></div>
+      <div style="text-align:right">
+        <div class="stock-price">${price}</div>
+        <div class="stock-change ${cls}">${arrow} ${Math.abs(change).toFixed(2)}%</div>
+      </div></div>`;
   }).join('');
 }
 
@@ -371,10 +356,9 @@ async function init() {
   // Initial fetch for all widgets
   updateWeather();
   updateTrueNAS();
-  updateServices();
   updateFinance();
   updateStocks();
-  updateDeliveries();
+  updateCrypto();
   updateNews();
   updateCalendar();
   updateNetwork();
@@ -382,16 +366,15 @@ async function init() {
 
   // Refresh intervals
   const r = config.refresh || {};
-  setInterval(updateWeather,    r.weather    || 600000);
-  setInterval(updateTrueNAS,    r.truenas    || 30000);
-  setInterval(updateServices,   r.services   || 60000);
-  setInterval(updateFinance,    r.finance    || 300000);
-  setInterval(updateStocks,     r.finance    || 300000);
-  setInterval(updateDeliveries, r.deliveries || 900000);
-  setInterval(updateNews,       r.news       || 1800000);
-  setInterval(updateCalendar,   r.calendar   || 300000);
-  setInterval(updateNetwork,    r.network    || 60000);
-  setInterval(updateChaos,      r.news       || 1800000);
+  setInterval(updateWeather,  r.weather  || 600000);
+  setInterval(updateTrueNAS,  r.truenas  || 30000);
+  setInterval(updateFinance,  r.finance  || 300000);
+  setInterval(updateStocks,   r.finance  || 300000);
+  setInterval(updateCrypto,   r.crypto   || 300000);
+  setInterval(updateNews,     r.news     || 1800000);
+  setInterval(updateCalendar, r.calendar || 300000);
+  setInterval(updateNetwork,  r.network  || 60000);
+  setInterval(updateChaos,    r.news     || 1800000);
 }
 
 document.addEventListener('DOMContentLoaded', init);
