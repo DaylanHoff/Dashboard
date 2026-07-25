@@ -113,9 +113,8 @@ app.get('/api/truenas', async (_req, res) => {
     const key = process.env.TRUENAS_API_KEY;
     if (!host || !key) return res.json({ error: 'TrueNAS not configured' });
 
-    const [pools, systemInfo, alerts] = await Promise.all([
+    const [pools, alerts] = await Promise.all([
       truenasFetch('pool'),
-      truenasFetch('system/info'),
       truenasFetch('alert/list'),
     ]);
 
@@ -132,7 +131,7 @@ app.get('/api/truenas', async (_req, res) => {
       // TrueNAS CORE or endpoint unavailable — skip
     }
 
-    res.json({ pools, systemInfo, alerts, appsDown });
+    res.json({ pools, alerts, appsDown });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

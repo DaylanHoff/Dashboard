@@ -282,12 +282,12 @@ html, body {
   color: #e5e7eb;
 }
 
-.sys-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.95rem;
+.pool-storage {
+  margin-left: auto;
+  font-size: 0.85rem;
   color: #9ca3af;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .alert-item {

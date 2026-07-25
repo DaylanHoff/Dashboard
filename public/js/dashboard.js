@@ -17,12 +17,12 @@ async function fetchJSON(url) {
   }
 }
 
-function formatUptime(seconds) {
-  if (!seconds) return 'N/A';
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return `${d}d ${h}h ${m}m`;
+function formatBytes(bytes) {
+  if (!bytes || bytes <= 0) return 'N/A';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  let i = 0;
+  while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+  return `${bytes.toFixed(1)} ${units[i]}`;
 }
 
 function timeAgo(dateStr) {
@@ -101,22 +101,16 @@ async function updateTrueNAS() {
     for (const pool of data.pools) {
       const status = pool.status || (pool.healthy ? 'ONLINE' : 'DEGRADED');
       const cls = status === 'ONLINE' ? 'status-up' : 'status-down';
+      const free  = formatBytes(pool.free);
+      const total = formatBytes(pool.size);
+      const pct   = pool.size > 0 ? Math.round((pool.free / pool.size) * 100) : null;
       html += `<div class="truenas-pool">
         <span class="status-dot ${cls}"></span>
         <span class="pool-name">${pool.name}</span>
-        <span class="${cls}" style="margin-left:auto">${status}</span>
+        <span class="pool-storage">${free} free${total !== 'N/A' ? ` / ${total}` : ''}${pct !== null ? ` (${pct}%)` : ''}</span>
       </div>`;
     }
     html += '</div>';
-  }
-
-  // System Info
-  if (data.systemInfo) {
-    html += `<div class="truenas-section"><h4>System</h4>
-      <div class="sys-info">
-        <span>Version: ${data.systemInfo.version || 'N/A'}</span>
-        <span>Uptime: ${formatUptime(data.systemInfo.uptime_seconds)}</span>
-      </div></div>`;
   }
 
   // Alerts
