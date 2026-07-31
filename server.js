@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const { exec } = require('child_process');
 const ical = require('node-ical');
+const WebSocket = require('ws');
 require('dotenv').config();
 
 const pkg = require('./package.json');
@@ -96,16 +97,131 @@ app.get('/api/weather', async (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// TrueNAS — API proxy
+// TrueNAS — JSON-RPC 2.0 over WebSocket (REST /api/v2.0 removed in 26.04)
 // ---------------------------------------------------------------------------
-async function truenasFetch(endpoint) {
+function truenasWsUrl() {
+  const host = process.env.TRUENAS_HOST;
+  const proto = (process.env.TRUENAS_PROTOCOL || 'http').toLowerCase();
+  const wsProto = proto === 'https' ? 'wss' : 'ws';
+  // Prefer explicit override, else standard JSON-RPC endpoint.
+  return process.env.TRUENAS_WS_URL || `${wsProto}://${host}/api/current`;
+}
+
+async function withTruenasSession(fn, { timeoutMs = 20000 } = {}) {
   const host = process.env.TRUENAS_HOST;
   const key = process.env.TRUENAS_API_KEY;
-  const proto = process.env.TRUENAS_PROTOCOL || 'http';
-  const resp = await fetch(`${proto}://${host}/api/v2.0/${endpoint}`, {
-    headers: { Authorization: `Bearer ${key}` },
+  if (!host || !key) throw new Error('TrueNAS not configured');
+
+  const url = truenasWsUrl();
+  const rejectUnauthorized = process.env.TRUENAS_TLS_REJECT_UNAUTHORIZED !== 'false';
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let nextId = 1;
+    const pending = new Map();
+
+    const finish = (err, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { ws.close(); } catch { /* ignore */ }
+      if (err) reject(err);
+      else resolve(value);
+    };
+
+    const timer = setTimeout(() => {
+      finish(new Error('TrueNAS WebSocket timeout'));
+    }, timeoutMs);
+
+    const ws = new WebSocket(url, {
+      handshakeTimeout: 8000,
+      rejectUnauthorized,
+    });
+
+    const call = (rpcMethod, rpcParams = []) => {
+      const id = nextId++;
+      const payload = {
+        jsonrpc: '2.0',
+        id,
+        method: rpcMethod,
+        params: rpcParams,
+      };
+      return new Promise((res, rej) => {
+        pending.set(id, { res, rej });
+        try {
+          ws.send(JSON.stringify(payload));
+        } catch (err) {
+          pending.delete(id);
+          rej(err);
+        }
+      });
+    };
+
+    ws.on('error', (err) => finish(err));
+    ws.on('close', () => {
+      if (!settled) finish(new Error('TrueNAS WebSocket closed unexpectedly'));
+    });
+
+    ws.on('message', (raw) => {
+      let msg;
+      try {
+        msg = JSON.parse(raw.toString());
+      } catch {
+        return;
+      }
+
+      // Notifications have method + no id; ignore for request/response calls.
+      if (msg == null || msg.id == null) return;
+
+      const waiter = pending.get(msg.id);
+      if (!waiter) return;
+      pending.delete(msg.id);
+
+      if (msg.error) {
+        const reason =
+          msg.error?.data?.reason ||
+          msg.error?.message ||
+          JSON.stringify(msg.error);
+        waiter.rej(new Error(reason));
+        return;
+      }
+      waiter.res(msg.result);
+    });
+
+    ws.on('open', async () => {
+      try {
+        // 25.10 still supports auth.login_with_api_key (key-only).
+        // Fall back to auth.login_ex API_KEY_PLAIN when a username is provided.
+        let authed = false;
+        try {
+          authed = await call('auth.login_with_api_key', [key]);
+        } catch {
+          authed = false;
+        }
+
+        if (!authed) {
+          const username = process.env.TRUENAS_USERNAME;
+          if (!username) {
+            throw new Error('TrueNAS API key auth failed (set TRUENAS_USERNAME for login_ex fallback)');
+          }
+          const login = await call('auth.login_ex', [{
+            mechanism: 'API_KEY_PLAIN',
+            username,
+            api_key: key,
+            login_options: { user_info: false },
+          }]);
+          if (!login || login.response_type !== 'SUCCESS') {
+            throw new Error(`TrueNAS auth failed: ${login?.response_type || 'unknown'}`);
+          }
+        }
+
+        const result = await fn(call);
+        finish(null, result);
+      } catch (err) {
+        finish(err);
+      }
+    });
   });
-  return resp.json();
 }
 
 app.get('/api/truenas', async (_req, res) => {
@@ -114,25 +230,32 @@ app.get('/api/truenas', async (_req, res) => {
     const key = process.env.TRUENAS_API_KEY;
     if (!host || !key) return res.json({ error: 'TrueNAS not configured' });
 
-    const [pools, alerts] = await Promise.all([
-      truenasFetch('pool'),
-      truenasFetch('alert/list'),
-    ]);
+    const payload = await withTruenasSession(async (call) => {
+      const [pools, alerts] = await Promise.all([
+        call('pool.query'),
+        call('alert.list'),
+      ]);
 
-    // Apps (TrueNAS SCALE only — gracefully ignore if unavailable)
-    let appsDown = [];
-    try {
-      const apps = await truenasFetch('app');
-      if (Array.isArray(apps)) {
-        appsDown = apps
-          .filter((a) => a.state !== 'RUNNING')
-          .map((a) => ({ name: a.name, state: a.state || 'STOPPED' }));
+      // Apps (TrueNAS SCALE only — gracefully ignore if unavailable)
+      let appsDown = [];
+      try {
+        const apps = await call('app.query');
+        if (Array.isArray(apps)) {
+          appsDown = apps
+            .filter((a) => a.state !== 'RUNNING')
+            .map((a) => ({
+              name: a.name || a.id || 'unknown',
+              state: a.state || 'STOPPED',
+            }));
+        }
+      } catch {
+        // TrueNAS CORE or endpoint unavailable — skip
       }
-    } catch {
-      // TrueNAS CORE or endpoint unavailable — skip
-    }
 
-    res.json({ pools, alerts, appsDown });
+      return { pools, alerts, appsDown };
+    });
+
+    res.json(payload);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

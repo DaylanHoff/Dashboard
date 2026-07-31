@@ -1,6 +1,6 @@
 {
   "name": "kiosk-dashboard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "FullPageOS kiosk dashboard with TrueNAS, weather, finance, deliveries, and more",
   "main": "server.js",
   "scripts": {
@@ -10,6 +10,7 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "node-ical": "^0.20.1"
+    "node-ical": "^0.20.1",
+    "ws": "^8.21.1"
   }
 }

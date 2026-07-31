@@ -22,6 +22,8 @@ You'll need to sign up for free API keys from these services:
 
 TrueNAS and Nextcloud use credentials from your own instances.
 
+TrueNAS health uses the supported **JSON-RPC 2.0 over WebSocket** API (`/api/current`), not the deprecated REST `/api/v2.0` endpoints (removed in TrueNAS 26.04).
+
 ## Deployment
 
 ### How it works
