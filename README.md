@@ -28,7 +28,24 @@ TrueNAS health uses the supported **JSON-RPC 2.0 over WebSocket** API (`/api/cur
 
 ### How it works
 
-Push to `main` → GitHub Actions builds the image → pushes to GHCR → Watchtower on TrueNAS detects the update → pulls and restarts automatically.
+1. Push to `main`
+2. GitHub Actions builds and pushes `ghcr.io/daylanhoff/dashboard:latest`
+3. On TrueNAS, systemd timer `dashboard-auto-deploy.timer` polls GHCR about every minute and runs the canonical force-recreate path when the image digest changes:
+
+```bash
+cd /mnt/.ix-apps/app_configs/dashboard/versions/1.0.0/templates/rendered
+docker compose -p ix-dashboard -f docker-compose.yaml pull dashboard
+docker compose -p ix-dashboard -f docker-compose.yaml up -d --force-recreate dashboard
+```
+
+Script/log location on TrueNAS: `/mnt/PrimaryHDDs01/custom-apps/dashboard/auto-deploy.sh` and `auto-deploy.log`.
+
+Watchtower remains installed as a backup, but compose force-recreate is the canonical deploy so env-file and image updates always apply.
+
+### Versioning
+
+`package.json` `version` is the user-facing app version (shown via `/api/config`). Bump it on every functional change (patch/minor/major).
+
 
 ### First-time setup on TrueNAS
 

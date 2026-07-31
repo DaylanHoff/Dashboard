@@ -1,4 +1,4 @@
-name: Build and Push
+name: Build and Deploy
 
 on:
   push:
@@ -26,7 +26,8 @@ jobs:
         id: lower
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/build-push-action@v6
+      - name: Build and push
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -36,3 +37,7 @@ jobs:
             ghcr.io/${{ steps.lower.outputs.owner }}/dashboard:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # TrueNAS is on a private LAN, so GitHub-hosted runners cannot SSH to it.
+      # After this job pushes :latest, the host-side auto-deploy timer on TrueNAS
+      # runs the same force-recreate path used for manual deploys.
