@@ -571,3 +571,122 @@ html, body {
   background: #374151;
   border-radius: 2px;
 }
+
+/* === Layout runtime === */
+.dashboard-root {
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+.dashboard {
+  min-height: 0;
+  min-width: 0;
+}
+
+.dash-container {
+  min-width: 0;
+  min-height: 0;
+}
+
+.widget-bare {
+  background: transparent;
+  border: none;
+  padding: 0 8px;
+}
+
+.widget-bare .widget-body {
+  overflow: visible;
+}
+
+.module-host {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.module-host > .mod-body,
+.module-host > .weather-content,
+.module-host > .network-dots,
+.module-host > .chaos-display,
+.module-host > .widget-clock-inner {
+  flex: 1;
+  min-height: 0;
+}
+
+.widget-clock-inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.mod-body {
+  overflow-y: auto;
+  height: 100%;
+}
+
+.mod-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 4px;
+  background: #0a0a0a;
+  flex: 1;
+}
+
+.text-module .text-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f9fafb;
+  margin-bottom: 8px;
+}
+
+.text-module .text-body {
+  color: #9ca3af;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+.kv-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kv-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #1f2937;
+  font-size: 0.95rem;
+}
+
+.kv-label { color: #6b7280; }
+.kv-value { color: #e5e7eb; font-weight: 600; text-align: right; }
+
+.network-dots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  height: 100%;
+}
+
+.chaos-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.weather-content {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  height: 100%;
+}

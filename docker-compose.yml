@@ -7,6 +7,8 @@ services:
       - "1337:1337"
     env_file:
       - .env
+    volumes:
+      - ./data:/app/data
     # Use host network if you need direct LAN access for pings/service checks
     # Uncomment the line below and remove the 'ports' section to use host networking
     # network_mode: host

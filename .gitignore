@@ -1,2 +1,6 @@
 node_modules/
 .env
+
+# Persisted editor state (defaults are committed)
+data/layout.json
+data/sources.json

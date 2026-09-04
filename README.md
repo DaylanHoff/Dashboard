@@ -82,3 +82,23 @@ Point Chromium to `http://YOUR_TRUENAS_IP:1337` by editing `/boot/fullpageos.txt
 All settings are in `.env`. See `.env.example` for the full list with descriptions.
 
 Each dashboard section can be toggled with `ENABLE_*` flags. Refresh intervals are configurable per widget.
+
+## Visual Editor
+
+Open `http://YOUR_HOST:1337/editor` to rearrange the dashboard at any time.
+
+- Drag containers to move; use the bottom-right handle to resize
+- Add modules from the left palette; remove/duplicate in the inspector
+- Scale individual widgets, rotate the whole canvas (0/90/180/270)
+- Define custom API sources (server-proxied) under the **API Sources** tab
+- Save writes `data/layout.json` (and `data/sources.json`); the kiosk at `/` hot-reloads via SSE
+- Optional: set `EDITOR_TOKEN` in `.env` and paste it into the editor token field
+
+### Adding a module
+
+1. Register client UI in `public/js/modules/registry.js` (`mount` / `update`)
+2. Add metadata in `server/module-meta.js` (palette + config schema)
+3. If it needs server data, add a fetcher in `server.js` `BUILTIN_FETCHERS` or use a custom source
+
+Persist layout across Docker restarts with the `./data:/app/data` volume (included in compose files).
+

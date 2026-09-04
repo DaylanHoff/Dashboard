@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Dashboard Editor</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/editor.css">
+</head>
+<body class="editor-body">
+  <div class="editor-app">
+    <header class="editor-topbar">
+      <div class="topbar-left">
+        <strong>Dashboard Editor</strong>
+        <span id="status" class="status-pill">Loading…</span>
+      </div>
+      <div class="topbar-actions">
+        <label class="inline-field">Token <input id="editor-token" type="password" placeholder="EDITOR_TOKEN" autocomplete="off"></label>
+        <button type="button" id="btn-save" class="btn primary">Save</button>
+        <button type="button" id="btn-reload" class="btn">Reload</button>
+        <button type="button" id="btn-reset" class="btn danger">Reset default</button>
+        <button type="button" id="btn-export" class="btn">Export</button>
+        <label class="btn file-btn">Import <input id="import-file" type="file" accept="application/json" hidden></label>
+        <a class="btn" href="/" target="_blank" rel="noopener">Open kiosk</a>
+      </div>
+    </header>
+
+    <div class="editor-main">
+      <aside class="editor-sidebar left">
+        <h2>Modules</h2>
+        <div id="module-palette" class="palette"></div>
+        <h2>Containers</h2>
+        <div id="container-list" class="container-list"></div>
+      </aside>
+
+      <section class="editor-canvas-wrap">
+        <div class="canvas-toolbar">
+          <label>Rotation
+            <select id="canvas-rotation">
+              <option value="0">0°</option>
+              <option value="90">90°</option>
+              <option value="180">180°</option>
+              <option value="270">270°</option>
+            </select>
+          </label>
+          <label>Cols <input id="canvas-cols" type="number" min="1" max="48" value="12"></label>
+          <label>Rows <input id="canvas-rows" type="number" min="1" max="48" value="12"></label>
+          <label>Gap <input id="canvas-gap" type="number" min="0" max="64" value="10"></label>
+          <label>Padding <input id="canvas-padding" type="number" min="0" max="64" value="10"></label>
+          <label>Scale <input id="canvas-scale" type="number" min="0.25" max="3" step="0.05" value="1"></label>
+          <label>BG <input id="canvas-bg" type="color" value="#0a0a0a"></label>
+        </div>
+        <div id="editor-stage" class="editor-stage">
+          <div id="editor-grid" class="editor-grid"></div>
+        </div>
+      </section>
+
+      <aside class="editor-sidebar right">
+        <div class="tabs">
+          <button type="button" class="tab active" data-tab="inspector">Inspector</button>
+          <button type="button" class="tab" data-tab="sources">API Sources</button>
+        </div>
+        <div id="tab-inspector" class="tab-panel active">
+          <div id="inspector-empty" class="muted">Select a container</div>
+          <form id="inspector-form" class="inspector-form hidden">
+            <label>ID <input name="id" readonly></label>
+            <label>Module <input name="moduleId" readonly></label>
+            <label>Title <input name="title"></label>
+            <div class="grid-2">
+              <label>X <input name="x" type="number" min="0"></label>
+              <label>Y <input name="y" type="number" min="0"></label>
+              <label>W <input name="w" type="number" min="1"></label>
+              <label>H <input name="h" type="number" min="1"></label>
+            </div>
+            <label>Refresh ms <input name="refreshMs" type="number" min="0" step="100"></label>
+            <label>Widget scale <input name="styleScale" type="number" min="0.25" max="3" step="0.05"></label>
+            <label>Opacity <input name="styleOpacity" type="number" min="0" max="1" step="0.05"></label>
+            <label class="check"><input name="enabled" type="checkbox"> Enabled</label>
+            <label class="check"><input name="showChrome" type="checkbox"> Show chrome</label>
+            <div id="module-config-fields"></div>
+            <div class="inspector-actions">
+              <button type="button" id="btn-duplicate" class="btn">Duplicate</button>
+              <button type="button" id="btn-delete" class="btn danger">Remove</button>
+            </div>
+          </form>
+        </div>
+        <div id="tab-sources" class="tab-panel">
+          <p class="muted">Custom proxied HTTP sources for Key/Value and JSON List modules.</p>
+          <div id="sources-list"></div>
+          <button type="button" id="btn-add-source" class="btn">Add source</button>
+          <button type="button" id="btn-save-sources" class="btn primary">Save sources</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <script src="/js/editor.js"></script>
+</body>
+</html>
