@@ -29,6 +29,11 @@ const MODULES = [
     defaultStyle: { showChrome: true }, configSchema: [],
   },
   {
+    id: 'qbit', name: 'qBittorrent', description: 'Active downloads and speeds', category: 'infra',
+    dataSource: 'qbit', defaultSize: { w: 6, h: 4 }, defaultRefreshMs: 10000,
+    defaultStyle: { showChrome: true }, configSchema: [],
+  },
+  {
     id: 'truenas', name: 'TrueNAS', description: 'Pools, system, alerts', category: 'infra',
     dataSource: 'truenas', defaultSize: { w: 6, h: 4 }, defaultRefreshMs: 30000,
     defaultStyle: { showChrome: true }, configSchema: [],
@@ -53,7 +58,7 @@ const MODULES = [
   },
   {
     id: 'news', name: 'Headlines', description: 'Kagi News', category: 'info',
-    dataSource: 'news', defaultSize: { w: 4, h: 4 }, defaultRefreshMs: 1800000,
+    dataSource: 'news', defaultSize: { w: 8, h: 4 }, defaultRefreshMs: 1800000,
     defaultStyle: { showChrome: true }, configSchema: [],
   },
   {

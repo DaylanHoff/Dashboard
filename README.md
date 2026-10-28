@@ -26,34 +26,53 @@ TrueNAS and Nextcloud use credentials from your own instances.
 
 ### How it works
 
-Push to `main` → GitHub Actions builds the image → pushes to GHCR → Watchtower on TrueNAS detects the update → pulls and restarts automatically.
+Run `./scripts/deploy-to-nas.sh` on your workstation. It builds a local Docker image, ships it to TrueNAS over SSH, loads it as `dashboard:local`, and recreates the container. No GitHub Actions, GHCR, or Watchtower.
+
+Defaults (override with env vars):
+
+| Variable | Default |
+|----------|---------|
+| `TRUENAS_HOST` | `10.0.0.16` |
+| `TRUENAS_USER` | `root` |
+| `TRUENAS_SSH_KEY` | `~/.ssh/truenas_root_rsa` |
+| `DASHBOARD_REMOTE_DIR` | `/mnt/PrimaryHDDs01/custom-apps/dashboard` |
+
+```bash
+./scripts/deploy-to-nas.sh
+# or
+./scripts/deploy-to-nas.sh --no-cache
+```
 
 ### First-time setup on TrueNAS
 
-1. SSH into your TrueNAS system
-2. Create a directory for the dashboard config:
+1. SSH into TrueNAS and create the app directory:
 
 ```bash
-mkdir -p /mnt/your-pool/apps/dashboard
-cd /mnt/your-pool/apps/dashboard
+mkdir -p /mnt/PrimaryHDDs01/custom-apps/dashboard/data
+cd /mnt/PrimaryHDDs01/custom-apps/dashboard
 ```
 
-3. Download the production compose file and create your `.env`:
+2. Install compose + env (from this repo):
 
 ```bash
-curl -O https://raw.githubusercontent.com/DaylanHoff/Dashboard/main/docker-compose.prod.yml
-curl -o .env https://raw.githubusercontent.com/DaylanHoff/Dashboard/main/.env.example
+# copy compose.nas.yaml → compose.yaml and .env.example → .env
 ```
 
-4. Edit `.env` with your settings (coordinates, TrueNAS API key, etc.)
+3. Edit `.env`:
+   - `TRUENAS_HOST=10.0.0.16`
+   - `TRUENAS_PROTOCOL=https` (required — http/ws auto-revokes API keys on 25.10+)
+   - `TRUENAS_API_KEY=` a **new** user-linked API key from the TrueNAS UI
+   - service URLs / pings pointing at `10.0.0.16`
 
-5. Start everything:
+4. From your workstation run `./scripts/deploy-to-nas.sh`.
 
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
+Dashboard URL: `http://10.0.0.16:1337`.
 
-The dashboard will be at `http://YOUR_TRUENAS_IP:1337`. Watchtower checks for new images every 5 minutes and auto-restarts with zero downtime.
+### TrueNAS API notes
+
+- Uses JSON-RPC 2.0 over **persistent** `wss://…/api/current` (not deprecated REST `/api/v2.0`).
+- API key auth must be TLS. Self-signed certs: `TRUENAS_TLS_REJECT_UNAUTHORIZED=false`.
+- If keys were previously used over http/ws they are revoked — create a new key in **Credentials → Users → API Keys**.
 
 ### Local development
 

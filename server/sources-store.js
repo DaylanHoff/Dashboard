@@ -1,9 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 
+// Runtime sources live in data/ (often a Docker volume).
+// Defaults are bundled under defaults/ so a volume mount cannot hide them.
 const DATA_DIR = path.join(__dirname, '..', 'data');
+const DEFAULTS_DIR = path.join(__dirname, '..', 'defaults');
 const SOURCES_PATH = path.join(DATA_DIR, 'sources.json');
-const DEFAULT_SOURCES_PATH = path.join(DATA_DIR, 'sources.default.json');
+const DEFAULT_SOURCES_CANDIDATES = [
+  path.join(DEFAULTS_DIR, 'sources.default.json'),
+  path.join(DATA_DIR, 'sources.default.json'),
+];
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -13,8 +19,17 @@ function readJSON(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
+function resolveDefaultSourcesPath() {
+  for (const candidate of DEFAULT_SOURCES_CANDIDATES) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error(
+    `sources.default.json not found (looked in ${DEFAULT_SOURCES_CANDIDATES.join(', ')})`
+  );
+}
+
 function getDefaultSources() {
-  return readJSON(DEFAULT_SOURCES_PATH);
+  return readJSON(resolveDefaultSourcesPath());
 }
 
 function getSourcesDoc() {

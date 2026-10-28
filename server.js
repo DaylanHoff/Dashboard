@@ -61,6 +61,7 @@ app.get('/api/config', (_req, res) => {
       calendar: (parseInt(process.env.REFRESH_CALENDAR) || 300) * 1000,
       network: (parseInt(process.env.REFRESH_NETWORK) || 60) * 1000,
       services: (parseInt(process.env.REFRESH_SERVICES) || 60) * 1000,
+      qbit: (parseInt(process.env.REFRESH_QBIT) || 10) * 1000,
     },
     enabled: {
       stocks: process.env.ENABLE_STOCKS !== 'false',
@@ -175,74 +176,280 @@ app.get('/api/weather', async (_req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-let truenasWs = null;
-let truenasReady = false;
-let rpcId = 1;
-const rpcCallbacks = new Map();
+// TrueNAS — persistent JSON-RPC 2.0 over WebSocket (/api/current).
+// REST /api/v2.0 is deprecated (alerts on use) and removed in 26.04.
+// API keys require TLS (wss/https); plaintext auth auto-revokes the key.
+// ---------------------------------------------------------------------------
+const truenasState = {
+  ws: null,
+  ready: false,
+  connecting: false,
+  rpcId: 1,
+  callbacks: new Map(),
+  reconnectTimer: null,
+  pingTimer: null,
+  backoffMs: 1000,
+  lastError: null,
+  authFailed: false,
+  cache: null,
+  cacheAt: 0,
+};
 
-function truenasConnect() {
-  const host = process.env.TRUENAS_HOST;
-  const key = process.env.TRUENAS_API_KEY;
-  const wsProto = process.env.TRUENAS_PROTOCOL === 'https' ? 'wss' : 'ws';
-  if (!host || !key) return;
-  truenasWs = new WebSocket(`${wsProto}://${host}/api/current`, { rejectUnauthorized: false });
-  truenasWs.on('open', () => {
-    const authId = rpcId++;
-    truenasWs.send(JSON.stringify({
-      jsonrpc: '2.0', method: 'auth.login_with_api_key', params: [key], id: authId,
-    }));
-    rpcCallbacks.set(authId, (result) => {
-      truenasReady = result === true;
-      if (truenasReady) console.log('TrueNAS WebSocket connected');
-      else console.error('TrueNAS auth failed');
-    });
-  });
-  truenasWs.on('message', (raw) => {
-    try {
-      const msg = JSON.parse(raw);
-      if (msg.id != null && rpcCallbacks.has(msg.id)) {
-        rpcCallbacks.get(msg.id)(msg.result, msg.error);
-        rpcCallbacks.delete(msg.id);
-      }
-    } catch { /* ignore */ }
-  });
-  truenasWs.on('close', () => {
-    truenasReady = false;
-    setTimeout(truenasConnect, 5000);
-  });
-  truenasWs.on('error', () => { truenasReady = false; });
+function truenasConfigured() {
+  return Boolean(process.env.TRUENAS_HOST && process.env.TRUENAS_API_KEY);
 }
 
-function rpcCall(method, params = []) {
+function truenasWsUrl() {
+  if (process.env.TRUENAS_WS_URL) return process.env.TRUENAS_WS_URL;
+
+  const host = (process.env.TRUENAS_HOST || '').replace(/^https?:\/\//i, '');
+  // Default https/wss — TrueNAS 25.10+ revokes API keys used over plaintext.
+  const proto = (process.env.TRUENAS_PROTOCOL || 'https').toLowerCase();
+  if (proto === 'http' || proto === 'ws') {
+    console.error(
+      'TrueNAS: refusing insecure protocol. Set TRUENAS_PROTOCOL=https (API keys over ws/http are auto-revoked).'
+    );
+    return null;
+  }
+  const wsProto = proto === 'https' || proto === 'wss' ? 'wss' : 'wss';
+  return `${wsProto}://${host}/api/current`;
+}
+
+function truenasTlsOptions() {
+  // Self-signed TrueNAS certs are normal; default to skip verify unless forced on.
+  const raw = process.env.TRUENAS_TLS_REJECT_UNAUTHORIZED;
+  const rejectUnauthorized = raw === 'true' || raw === '1';
+  return { rejectUnauthorized, handshakeTimeout: 8000 };
+}
+
+function truenasClearTimers() {
+  if (truenasState.reconnectTimer) {
+    clearTimeout(truenasState.reconnectTimer);
+    truenasState.reconnectTimer = null;
+  }
+  if (truenasState.pingTimer) {
+    clearInterval(truenasState.pingTimer);
+    truenasState.pingTimer = null;
+  }
+}
+
+function truenasFailPending(err) {
+  for (const [, cb] of truenasState.callbacks) {
+    try { cb(undefined, err); } catch { /* ignore */ }
+  }
+  truenasState.callbacks.clear();
+}
+
+function truenasScheduleReconnect() {
+  if (truenasState.reconnectTimer || !truenasConfigured() || truenasState.authFailed) return;
+  const delay = truenasState.backoffMs;
+  truenasState.backoffMs = Math.min(truenasState.backoffMs * 2, 60000);
+  truenasState.reconnectTimer = setTimeout(() => {
+    truenasState.reconnectTimer = null;
+    truenasConnect();
+  }, delay);
+}
+
+function truenasRpc(method, params = [], timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
-    if (!truenasReady || !truenasWs || truenasWs.readyState !== WebSocket.OPEN) {
-      return reject(new Error('TrueNAS WebSocket not connected'));
+    if (!truenasState.ready || !truenasState.ws || truenasState.ws.readyState !== WebSocket.OPEN) {
+      return reject(new Error(truenasState.lastError || 'TrueNAS WebSocket not connected'));
     }
-    const id = rpcId++;
-    const timeout = setTimeout(() => {
-      rpcCallbacks.delete(id);
-      reject(new Error('RPC timeout'));
-    }, 10000);
-    rpcCallbacks.set(id, (result, error) => {
-      clearTimeout(timeout);
-      if (error) reject(new Error(error.message || JSON.stringify(error)));
-      else resolve(result);
+    const id = truenasState.rpcId++;
+    const timer = setTimeout(() => {
+      truenasState.callbacks.delete(id);
+      reject(new Error(`TrueNAS RPC timeout: ${method}`));
+    }, timeoutMs);
+    truenasState.callbacks.set(id, (result, error) => {
+      clearTimeout(timer);
+      if (error) {
+        const reason =
+          (typeof error === 'object' && (error.data?.reason || error.message)) ||
+          (typeof error === 'string' ? error : JSON.stringify(error));
+        reject(new Error(reason));
+      } else {
+        resolve(result);
+      }
     });
-    truenasWs.send(JSON.stringify({ jsonrpc: '2.0', method, params, id }));
+    try {
+      truenasState.ws.send(JSON.stringify({ jsonrpc: '2.0', method, params, id }));
+    } catch (err) {
+      clearTimeout(timer);
+      truenasState.callbacks.delete(id);
+      reject(err);
+    }
   });
+}
+
+async function truenasAuthenticate() {
+  const key = process.env.TRUENAS_API_KEY;
+  let authed = false;
+  try {
+    authed = (await truenasRpc('auth.login_with_api_key', [key], 10000)) === true;
+  } catch (err) {
+    truenasState.lastError = err.message;
+    authed = false;
+  }
+  if (authed) return;
+
+  const username = process.env.TRUENAS_USERNAME;
+  if (!username) {
+    throw new Error(
+      'TrueNAS API key auth failed (key revoked/invalid?). Create a new user-linked API key and set TRUENAS_API_KEY. Optional: TRUENAS_USERNAME for login_ex fallback.'
+    );
+  }
+  const login = await truenasRpc('auth.login_ex', [{
+    mechanism: 'API_KEY_PLAIN',
+    username,
+    api_key: key,
+    login_options: { user_info: false },
+  }], 10000);
+  if (!login || login.response_type !== 'SUCCESS') {
+    throw new Error(`TrueNAS auth failed: ${login?.response_type || 'unknown'}`);
+  }
+}
+
+function truenasConnect() {
+  if (!truenasConfigured() || truenasState.connecting || truenasState.authFailed) return;
+  if (truenasState.ws && (truenasState.ws.readyState === WebSocket.OPEN || truenasState.ws.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  const url = truenasWsUrl();
+  if (!url) {
+    truenasState.lastError = 'TrueNAS insecure protocol refused';
+    return;
+  }
+
+  truenasState.connecting = true;
+  truenasState.ready = false;
+  truenasClearTimers();
+
+  let ws;
+  try {
+    ws = new WebSocket(url, truenasTlsOptions());
+  } catch (err) {
+    truenasState.connecting = false;
+    truenasState.lastError = err.message;
+    truenasScheduleReconnect();
+    return;
+  }
+  truenasState.ws = ws;
+
+  ws.on('open', async () => {
+    try {
+      // Temporarily mark ready so auth RPCs can send.
+      truenasState.ready = true;
+      await truenasAuthenticate();
+      truenasState.ready = true;
+      truenasState.connecting = false;
+      truenasState.authFailed = false;
+      truenasState.backoffMs = 1000;
+      truenasState.lastError = null;
+      console.log(`TrueNAS WebSocket connected (${url})`);
+
+      // Keepalive — middleware may drop idle sessions.
+      truenasState.pingTimer = setInterval(() => {
+        if (!truenasState.ready || !truenasState.ws || truenasState.ws.readyState !== WebSocket.OPEN) return;
+        truenasRpc('core.ping', [], 5000).catch(() => {
+          try { truenasState.ws.terminate(); } catch { /* ignore */ }
+        });
+      }, 30000);
+    } catch (err) {
+      truenasState.ready = false;
+      truenasState.connecting = false;
+      truenasState.lastError = err.message;
+      truenasState.authFailed = /auth failed|revoked|invalid/i.test(err.message || '');
+      console.error('TrueNAS auth error:', err.message);
+      try { ws.close(); } catch { /* ignore */ }
+      // Permanent auth failures should not reconnect-spam the middleware.
+      if (truenasState.authFailed) truenasClearTimers();
+    }
+  });
+
+  ws.on('message', (raw) => {
+    let msg;
+    try {
+      msg = JSON.parse(raw.toString());
+    } catch {
+      return;
+    }
+    // Notifications have method and no id — ignore for request/response.
+    if (msg == null || msg.id == null) return;
+    const cb = truenasState.callbacks.get(msg.id);
+    if (!cb) return;
+    truenasState.callbacks.delete(msg.id);
+    cb(msg.result, msg.error);
+  });
+
+  ws.on('close', () => {
+    truenasState.ready = false;
+    truenasState.connecting = false;
+    truenasState.ws = null;
+    truenasClearTimers();
+    truenasFailPending({ message: 'TrueNAS WebSocket closed' });
+    if (!truenasState.authFailed) truenasScheduleReconnect();
+  });
+
+  ws.on('error', (err) => {
+    truenasState.lastError = err?.message || 'TrueNAS WebSocket error';
+    truenasState.ready = false;
+    // 'close' follows and schedules reconnect.
+  });
+}
+
+async function fetchTrueNAS() {
+  if (!truenasConfigured()) return { error: 'TrueNAS not configured' };
+
+  // Serve brief cache if reconnecting after a good snapshot.
+  const cacheTtl = 15000;
+  if (!truenasState.ready && truenasState.cache && (Date.now() - truenasState.cacheAt) < cacheTtl) {
+    return { ...truenasState.cache, stale: true };
+  }
+
+  if (!truenasState.ready) {
+    truenasConnect();
+    return {
+      error: truenasState.lastError || 'TrueNAS WebSocket not connected',
+      pools: truenasState.cache?.pools || [],
+      alerts: truenasState.cache?.alerts || [],
+      systemInfo: truenasState.cache?.systemInfo || null,
+      appsDown: truenasState.cache?.appsDown || [],
+      stale: Boolean(truenasState.cache),
+    };
+  }
+
+  const [pools, systemInfo, rawAlerts] = await Promise.all([
+    truenasRpc('pool.query'),
+    truenasRpc('system.info'),
+    truenasRpc('alert.list'),
+  ]);
+
+  // alert.list includes dismissed one-shots; only surface active alerts.
+  const alerts = (Array.isArray(rawAlerts) ? rawAlerts : []).filter((a) => !a?.dismissed);
+
+  let appsDown = [];
+  try {
+    const apps = await truenasRpc('app.query');
+    if (Array.isArray(apps)) {
+      appsDown = apps
+        .filter((a) => a.state && a.state !== 'RUNNING')
+        .map((a) => ({
+          name: a.name || a.id || 'unknown',
+          state: a.state || 'STOPPED',
+        }));
+    }
+  } catch {
+    // CORE or apps API unavailable
+  }
+
+  const payload = { pools, systemInfo, alerts, appsDown };
+  truenasState.cache = payload;
+  truenasState.cacheAt = Date.now();
+  return payload;
 }
 
 truenasConnect();
-
-async function fetchTrueNAS() {
-  const host = process.env.TRUENAS_HOST;
-  const key = process.env.TRUENAS_API_KEY;
-  if (!host || !key) return { error: 'TrueNAS not configured' };
-  const [pools, systemInfo, alerts] = await Promise.all([
-    rpcCall('pool.query'), rpcCall('system.info'), rpcCall('alert.list'),
-  ]);
-  return { pools, systemInfo, alerts };
-}
 
 app.get('/api/truenas', async (_req, res) => {
   try { res.json(await fetchTrueNAS()); }
@@ -273,6 +480,109 @@ async function fetchServices() {
 
 app.get('/api/services', async (_req, res) => {
   try { res.json(await fetchServices()); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+async function fetchQbit() {
+  const host = (process.env.QBIT_HOST || '').replace(/\/$/, '');
+  const key = process.env.QBIT_API_KEY;
+  if (!host || !key) return { error: 'qBittorrent not configured' };
+
+  const headers = {
+    Authorization: `Bearer ${key}`,
+    Referer: host,
+  };
+
+  // Active transfers: downloading + uploading (seeding with peers).
+  const [transferResp, downloadingResp, uploadingResp] = await Promise.all([
+    fetch(`${host}/api/v2/transfer/info`, { headers }),
+    fetch(`${host}/api/v2/torrents/info?filter=downloading`, { headers }),
+    fetch(`${host}/api/v2/torrents/info?filter=uploading`, { headers }),
+  ]);
+
+  if (!transferResp.ok) {
+    return { error: `qBittorrent transfer HTTP ${transferResp.status}` };
+  }
+  if (!downloadingResp.ok) {
+    return { error: `qBittorrent downloading HTTP ${downloadingResp.status}` };
+  }
+  if (!uploadingResp.ok) {
+    return { error: `qBittorrent uploading HTTP ${uploadingResp.status}` };
+  }
+
+  const [transfer, downloadingRaw, uploadingRaw] = await Promise.all([
+    transferResp.json(),
+    downloadingResp.json(),
+    uploadingResp.json(),
+  ]);
+
+  const downloading = Array.isArray(downloadingRaw) ? downloadingRaw : [];
+  const uploading = Array.isArray(uploadingRaw) ? uploadingRaw : [];
+
+  const byHash = new Map();
+  for (const t of downloading) {
+    if (!t?.hash) continue;
+    byHash.set(t.hash, {
+      ...t,
+      _downloading: true,
+      // Only treat as active upload when bytes are actually going out.
+      _uploading: (t.upspeed || 0) > 0,
+    });
+  }
+  for (const t of uploading) {
+    if (!t?.hash) continue;
+    // Skip idle seeders — filter=uploading includes stalled/completed seeds.
+    if ((t.upspeed || 0) <= 0 && !byHash.has(t.hash)) continue;
+    const prev = byHash.get(t.hash);
+    if (prev) {
+      byHash.set(t.hash, {
+        ...prev,
+        ...t,
+        _downloading: true,
+        _uploading: (t.upspeed || 0) > 0 || prev._uploading,
+      });
+    } else {
+      byHash.set(t.hash, { ...t, _downloading: false, _uploading: (t.upspeed || 0) > 0 });
+    }
+  }
+
+  const mapTorrent = (t, activity) => ({
+    name: t.name,
+    progress: Math.round((t.progress || 0) * 1000) / 10,
+    dlspeed: t.dlspeed || 0,
+    upspeed: t.upspeed || 0,
+    state: t.state,
+    activity,
+  });
+
+  // Separate columns: downloads sorted by fastest DL, uploads by fastest UL.
+  const downloads = [...byHash.values()]
+    .filter((t) => t._downloading || (t.dlspeed || 0) > 0)
+    .sort((a, b) => (b.dlspeed || 0) - (a.dlspeed || 0))
+    .slice(0, 10)
+    .map((t) => mapTorrent(t, (t.upspeed || 0) > 0 ? 'both' : 'download'));
+
+  const uploads = [...byHash.values()]
+    .filter((t) => (t.upspeed || 0) > 0)
+    .sort((a, b) => (b.upspeed || 0) - (a.upspeed || 0))
+    .slice(0, 10)
+    .map((t) => mapTorrent(t, (t.dlspeed || 0) > 0 || t._downloading ? 'both' : 'upload'));
+
+  return {
+    dlSpeed: transfer.dl_info_speed || 0,
+    upSpeed: transfer.up_info_speed || 0,
+    downloadingCount: downloads.length,
+    uploadingCount: uploads.length,
+    torrentCount: downloads.length + uploads.length,
+    downloads,
+    uploads,
+    // Back-compat for older UI
+    torrents: [...downloads, ...uploads],
+  };
+}
+
+app.get('/api/qbit', async (_req, res) => {
+  try { res.json(await fetchQbit()); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -400,12 +710,21 @@ app.get('/api/chaos', async (_req, res) => {
 });
 
 async function fetchCalendar() {
-  const url = process.env.NEXTCLOUD_URL;
+  let url = process.env.NEXTCLOUD_URL;
   const user = process.env.NEXTCLOUD_USERNAME;
   const pass = process.env.NEXTCLOUD_PASSWORD;
   const cal = process.env.NEXTCLOUD_CALENDAR_NAME || 'personal';
   if (!url || !user || !pass) return { error: 'Nextcloud not configured' };
-  const baseUrl = new URL(url).origin;
+  // Allow full login URLs or host-only values; normalize to origin for CalDAV.
+  try {
+    if (!/^https?:\/\//i.test(url)) url = `http://${url}`;
+    const parsed = new URL(url);
+    // Strip accidental /login paths from UI URLs.
+    url = parsed.origin;
+  } catch {
+    return { error: 'Nextcloud URL invalid' };
+  }
+  const baseUrl = url;
   const calUrl = `${baseUrl}/remote.php/dav/calendars/${user}/${cal}/`;
   const now = new Date();
   const future = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
@@ -517,6 +836,7 @@ const BUILTIN_FETCHERS = {
   weather: fetchWeather,
   truenas: fetchTrueNAS,
   services: fetchServices,
+  qbit: fetchQbit,
   finance: fetchFinance,
   stocks: (q) => fetchStocks(q?.symbols),
   deliveries: fetchDeliveries,

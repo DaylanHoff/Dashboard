@@ -474,6 +474,100 @@ html, body {
 }
 
 /* === News === */
+
+/* ── qBittorrent ─────────────────────────────────────────────────────── */
+.qbit-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.qbit-stat {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.qbit-stat-label {
+  color: #6b7280;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.qbit-stat-value {
+  color: #f3f4f6;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.qbit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.qbit-item {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.qbit-name {
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 8px;
+}
+.qbit-bar {
+  height: 8px;
+  background: #1f2937;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.qbit-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 999px;
+}
+.qbit-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.qbit-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.qbit-name-row .qbit-name { margin-bottom: 0; flex: 1; min-width: 0; }
+.qbit-badge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #93c5fd;
+  background: #1e3a5f;
+  border: 1px solid #1d4ed8;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.qbit-bar-fill.upload {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+.status-info { color: #60a5fa; }
+
+
 .news-item {
   padding: 8px 0;
   border-bottom: 1px solid #1f2937;
@@ -689,4 +783,61 @@ html, body {
   justify-content: flex-end;
   gap: 16px;
   height: 100%;
+}
+
+
+.qbit-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+}
+.qbit-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #0b1220;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 10px;
+}
+.qbit-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.qbit-col-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d1d5db;
+}
+.qbit-col-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #93c5fd;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.qbit-col .qbit-list {
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+.qbit-empty {
+  font-size: 0.85rem;
+  padding: 8px 0;
+}
+.qbit-mod-body,
+.mod-body:has(.qbit-columns) {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }

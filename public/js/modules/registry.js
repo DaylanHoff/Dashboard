@@ -40,6 +40,22 @@ window.DashboardModules = (() => {
     return `${d}d ${h}h ${m}m`;
   }
 
+  function formatBytes(bytes) {
+    if (!bytes || bytes < 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    let n = bytes;
+    while (n >= 1024 && i < units.length - 1) {
+      n /= 1024;
+      i += 1;
+    }
+    return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
+  function formatSpeed(bytesPerSec) {
+    return `${formatBytes(bytesPerSec)}/s`;
+  }
+
   function weatherIcon(code, isDay) {
     if (code === 0) return isDay ? '☀️' : '🌙';
     if (code <= 2) return isDay ? '⛅' : '☁️';
@@ -148,7 +164,7 @@ window.DashboardModules = (() => {
     },
   });
 
-  // ── Services ───────────────────────────────────────────────────────────
+  // ── Services (HTTP health) ─────────────────────────────────────────────
   register({
     id: 'services',
     dataSource: 'services',
@@ -173,6 +189,79 @@ window.DashboardModules = (() => {
             <span class="${s.status === 'up' ? 'status-up' : 'status-down'}">${s.status.toUpperCase()}</span>
           </div>
         </div>`).join('') + '</div>';
+    },
+  });
+
+  // ── qBittorrent (downloads | uploads columns) ──────────────────────────
+  register({
+    id: 'qbit',
+    dataSource: 'qbit',
+    mount(el) {
+      el.innerHTML = `<div class="mod-body"><span class="text-muted">Loading...</span></div>`;
+    },
+    update(el, data) {
+      const root = el.querySelector('.mod-body') || el;
+      if (data?.error) {
+        root.innerHTML = `<span class="text-muted">${escapeHtml(data.error)}</span>`;
+        return;
+      }
+      if (!data) {
+        root.innerHTML = '<span class="text-muted">No data</span>';
+        return;
+      }
+
+      const legacy = data.torrents || [];
+      const downloads = (data.downloads || legacy.filter((t) => t.activity !== 'upload'))
+        .slice()
+        .sort((a, b) => (b.dlspeed || 0) - (a.dlspeed || 0));
+      const uploads = (data.uploads || legacy.filter((t) => t.activity !== 'download'))
+        .slice()
+        .sort((a, b) => (b.upspeed || 0) - (a.upspeed || 0));
+
+      const renderItem = (t, mode) => {
+        const pct = Math.min(100, Math.max(0, t.progress || 0));
+        const isUpload = mode === 'upload';
+        const speed = isUpload ? (t.upspeed || 0) : (t.dlspeed || 0);
+        const speedCls = isUpload ? 'status-info' : 'status-up';
+        const speedLabel = isUpload ? '↑' : '↓';
+        const barClass = isUpload ? 'qbit-bar-fill upload' : 'qbit-bar-fill';
+        return `<div class="qbit-item">
+          <div class="qbit-name">${escapeHtml(t.name || 'Torrent')}</div>
+          <div class="qbit-bar"><div class="${barClass}" style="width:${pct}%"></div></div>
+          <div class="qbit-meta">
+            <span>${pct.toFixed(1)}%</span>
+            <span class="${speedCls}">${speedLabel} ${formatSpeed(speed)}</span>
+            <span class="text-muted">${escapeHtml(t.state || '')}</span>
+          </div>
+        </div>`;
+      };
+
+      const renderCol = (title, items, mode, emptyMsg) => `
+        <div class="qbit-col">
+          <div class="qbit-col-header">
+            <span class="qbit-col-title">${title}</span>
+            <span class="qbit-col-count">${items.length}</span>
+          </div>
+          ${items.length
+            ? `<div class="qbit-list">${items.map((t) => renderItem(t, mode)).join('')}</div>`
+            : `<div class="text-muted qbit-empty">${emptyMsg}</div>`}
+        </div>`;
+
+      root.innerHTML = `
+        <div class="qbit-summary">
+          <div class="qbit-stat">
+            <span class="qbit-stat-label">↓ DL</span>
+            <span class="qbit-stat-value status-up">${formatSpeed(data.dlSpeed || 0)}</span>
+          </div>
+          <div class="qbit-stat">
+            <span class="qbit-stat-label">↑ UL</span>
+            <span class="qbit-stat-value status-info">${formatSpeed(data.upSpeed || 0)}</span>
+          </div>
+        </div>
+        <div class="qbit-columns">
+          ${renderCol('Downloads', downloads, 'download', 'No active downloads')}
+          ${renderCol('Uploads', uploads, 'upload', 'No active uploads')}
+        </div>`;
     },
   });
 
@@ -210,6 +299,17 @@ window.DashboardModules = (() => {
             <span>Uptime: ${formatUptime(data.systemInfo.uptime_seconds)}</span>
           </div></div>`;
       }
+      if (data.appsDown?.length) {
+        html += '<div class="truenas-section"><h4>Apps Down</h4>';
+        for (const app of data.appsDown.slice(0, 5)) {
+          html += `<div class="truenas-pool">
+            <span class="status-dot status-down"></span>
+            <span class="pool-name">${escapeHtml(app.name)}</span>
+            <span class="status-down" style="margin-left:auto">${escapeHtml(app.state || 'STOPPED')}</span>
+          </div>`;
+        }
+        html += '</div>';
+      }
       if (data.alerts?.length) {
         html += '<div class="truenas-section"><h4>Alerts</h4>';
         for (const alert of data.alerts.slice(0, 3)) {
@@ -221,6 +321,9 @@ window.DashboardModules = (() => {
         html += '</div>';
       } else {
         html += '<div class="truenas-section"><h4>Alerts</h4><span class="text-muted">No active alerts</span></div>';
+      }
+      if (data.stale) {
+        html += '<div class="truenas-section"><span class="text-muted">Reconnecting… showing cached data</span></div>';
       }
       root.innerHTML = html;
     },

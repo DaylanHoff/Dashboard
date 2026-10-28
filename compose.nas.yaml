@@ -1,0 +1,15 @@
+# Deploy target on TrueNAS:
+#   /mnt/PrimaryHDDs01/custom-apps/dashboard/compose.yaml
+#
+# Image is loaded by scripts/deploy-to-nas.sh as dashboard:local
+services:
+  dashboard:
+    image: dashboard:local
+    container_name: kiosk-dashboard
+    restart: unless-stopped
+    ports:
+      - "1337:1337"
+    env_file:
+      - /mnt/PrimaryHDDs01/custom-apps/dashboard/.env
+    volumes:
+      - /mnt/PrimaryHDDs01/custom-apps/dashboard/data:/app/data

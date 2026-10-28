@@ -21,8 +21,15 @@
       "h": 1,
       "enabled": true,
       "refreshMs": 1000,
-      "style": { "scale": 1, "showChrome": false, "opacity": 1 },
-      "config": { "timeZone": "America/Denver", "timeZoneLabel": "MST" }
+      "style": {
+        "scale": 1,
+        "showChrome": false,
+        "opacity": 1
+      },
+      "config": {
+        "timeZone": "America/Denver",
+        "timeZoneLabel": "MST"
+      }
     },
     {
       "id": "chaos",
@@ -34,7 +41,11 @@
       "h": 1,
       "enabled": true,
       "refreshMs": 1800000,
-      "style": { "scale": 1, "showChrome": false, "opacity": 1 },
+      "style": {
+        "scale": 1,
+        "showChrome": false,
+        "opacity": 1
+      },
       "config": {}
     },
     {
@@ -47,7 +58,11 @@
       "h": 1,
       "enabled": true,
       "refreshMs": 60000,
-      "style": { "scale": 1, "showChrome": false, "opacity": 1 },
+      "style": {
+        "scale": 1,
+        "showChrome": false,
+        "opacity": 1
+      },
       "config": {}
     },
     {
@@ -60,20 +75,28 @@
       "h": 1,
       "enabled": true,
       "refreshMs": 600000,
-      "style": { "scale": 1, "showChrome": false, "opacity": 1 },
+      "style": {
+        "scale": 1,
+        "showChrome": false,
+        "opacity": 1
+      },
       "config": {}
     },
     {
-      "id": "services",
-      "moduleId": "services",
-      "title": "Services",
+      "id": "qbit",
+      "moduleId": "qbit",
+      "title": "qBittorrent",
       "x": 0,
       "y": 1,
       "w": 6,
       "h": 4,
       "enabled": true,
-      "refreshMs": 60000,
-      "style": { "scale": 1, "showChrome": true, "opacity": 1 },
+      "refreshMs": 10000,
+      "style": {
+        "scale": 1,
+        "showChrome": true,
+        "opacity": 1
+      },
       "config": {}
     },
     {
@@ -86,7 +109,11 @@
       "h": 4,
       "enabled": true,
       "refreshMs": 30000,
-      "style": { "scale": 1, "showChrome": true, "opacity": 1 },
+      "style": {
+        "scale": 1,
+        "showChrome": true,
+        "opacity": 1
+      },
       "config": {}
     },
     {
@@ -99,7 +126,11 @@
       "h": 3,
       "enabled": true,
       "refreshMs": 300000,
-      "style": { "scale": 1, "showChrome": true, "opacity": 1 },
+      "style": {
+        "scale": 1,
+        "showChrome": true,
+        "opacity": 1
+      },
       "config": {}
     },
     {
@@ -112,33 +143,30 @@
       "h": 3,
       "enabled": true,
       "refreshMs": 300000,
-      "style": { "scale": 1, "showChrome": true, "opacity": 1 },
-      "config": { "symbols": "SPY,DIA,QQQ" }
-    },
-    {
-      "id": "deliveries",
-      "moduleId": "deliveries",
-      "title": "Deliveries",
-      "x": 0,
-      "y": 8,
-      "w": 4,
-      "h": 4,
-      "enabled": true,
-      "refreshMs": 900000,
-      "style": { "scale": 1, "showChrome": true, "opacity": 1 },
-      "config": {}
+      "style": {
+        "scale": 1,
+        "showChrome": true,
+        "opacity": 1
+      },
+      "config": {
+        "symbols": "SPY,DIA,QQQ"
+      }
     },
     {
       "id": "news",
       "moduleId": "news",
       "title": "Headlines",
-      "x": 4,
+      "x": 0,
       "y": 8,
-      "w": 4,
+      "w": 8,
       "h": 4,
       "enabled": true,
       "refreshMs": 1800000,
-      "style": { "scale": 1, "showChrome": true, "opacity": 1 },
+      "style": {
+        "scale": 1,
+        "showChrome": true,
+        "opacity": 1
+      },
       "config": {}
     },
     {
@@ -151,7 +179,11 @@
       "h": 4,
       "enabled": true,
       "refreshMs": 300000,
-      "style": { "scale": 1, "showChrome": true, "opacity": 1 },
+      "style": {
+        "scale": 1,
+        "showChrome": true,
+        "opacity": 1
+      },
       "config": {}
     }
   ]
